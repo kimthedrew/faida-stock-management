@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="add-stock">
+    <h2>Add New Stock Item</h2>
+    <form method="POST">
+        <div class="form-group">
+            <label for="name">Item Name:</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        <div class="form-group">
+            <label for="buying_price">Buying Price:</label>
+            <input type="number" step="0.01" id="buying_price" name="buying_price" required>
+        </div>
+        <div class="form-group">
+            <label for="selling_price">Selling Price:</label>
+            <input type="number" step="0.01" id="selling_price" name="selling_price" required>
+        </div>
+        <div class="form-group">
+            <label for="size">Size (optional):</label>
+            <input type="text" id="size" name="size">
+        </div>
+        <div class="form-group">
+            <label for="quantity">Quantity:</label>
+            <input type="number" id="quantity" name="quantity" required>
+        </div>
+        <div class="form-group">
+            <label for="description">Description (optional):</label>
+            <textarea id="description" name="description"></textarea>
+        </div>
+        <button type="submit">Add Item</button>
+    </form>
+</div>
+{% endblock %}

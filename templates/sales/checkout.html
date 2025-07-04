@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="checkout-container">
+    <h2>Sale Completed Successfully!</h2>
+    
+    <div class="receipt">
+        <div class="receipt-header">
+            <h3>Receipt #{{ sale.id }}</h3>
+            <p>{{ sale.date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+        </div>
+        
+        <div class="receipt-details">
+            <div class="receipt-row">
+                <span>Total Amount:</span>
+                <span>KES {{ sale.total_amount }}</span>
+            </div>
+            <div class="receipt-row">
+                <span>Payment Method:</span>
+                <span>{{ sale.payment_method|upper }}</span>
+            </div>
+            {% if sale.payment_method == 'mpesa' and sale.mpesa_code %}
+            <div class="receipt-row">
+                <span>M-Pesa Code:</span>
+                <span>{{ sale.mpesa_code }}</span>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="receipt-items">
+            <h4>Items Purchased</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in sale.items %}
+                    <tr>
+                        <td>{{ item.stock_item.name }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>KES {{ item.price }}</td>
+                        <td>KES {{ item.price * item.quantity }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="receipt-footer">
+            <p>Thank you for your business!</p>
+            <a href="{{ url_for('pos') }}" class="btn">New Sale</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

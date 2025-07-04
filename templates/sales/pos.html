@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container pos-container"> <!-- Add container class -->
+    <h2>Point of Sale</h2>
+    
+    <div class="search-bar-container"> <!-- Wrap search bar -->
+      <input type="text" id="search" placeholder="Search items..." class="search-bar">
+    </div>
+    
+    <div class="pos-content">
+      <!-- ... rest of your code ... -->
+            <table class="item-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Price</th>
+                        <th>Size</th>
+                        <th>Stock</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr class="item-row" data-id="{{ item.id }}" data-name="{{ item.name }}" 
+                        data-price="{{ item.selling_price }}" data-stock="{{ item.quantity }}">
+                        <td>{{ item.name }}</td>
+                        <td>KES {{ item.selling_price }}</td>
+                        <td>{{ item.size if item.size else '-' }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td><button class="add-to-cart">Add to Cart</button></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="cart">
+            <h3>Shopping Cart</h3>
+            <table id="cart-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Price</th>
+                        <th>Qty</th>
+                        <th>Total</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Cart items will be added here dynamically -->
+                </tbody>
+            </table>
+            <div class="cart-total">
+                <strong>Total: KES <span id="total-amount">0.00</span></strong>
+            </div>
+            
+            <form id="checkout-form" method="POST" action="{{ url_for('checkout') }}">
+                <input type="hidden" name="cart" id="cart-data">
+                <input type="hidden" name="total" id="total-value">
+                
+                <div class="payment-method">
+                    <label><input type="radio" name="payment_method" value="cash" checked> Cash</label>
+                    <label><input type="radio" name="payment_method" value="mpesa"> M-Pesa</label>
+                </div>
+                
+                <div id="mpesa-field" style="display:none;">
+                    <label>M-Pesa Code:</label>
+                    <input type="text" name="mpesa_code">
+                </div>
+                
+                <button type="submit" class="checkout-btn">Complete Sale</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // JavaScript for POS functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const cart = [];
+        
+        // Add to cart functionality
+        document.querySelectorAll('.add-to-cart').forEach(button => {
+            button.addEventListener('click', function() {
+                const row = this.closest('.item-row');
+                const id = parseInt(row.dataset.id);
+                const name = row.dataset.name;
+                const price = parseFloat(row.dataset.price);
+                const stock = parseInt(row.dataset.stock);
+                
+                // Check if already in cart
+                const existing = cart.find(item => item.id === id);
+                if (existing) {
+                    if (existing.quantity < stock) {
+                        existing.quantity++;
+                    } else {
+                        alert('Not enough stock');
+                    }
+                } else {
+                    cart.push({id, name, price, quantity: 1});
+                }
+                updateCart();
+            });
+        });
+        
+        // Update cart display
+        function updateCart() {
+            const tbody = document.querySelector('#cart-table tbody');
+            tbody.innerHTML = '';
+            let total = 0;
+            
+            cart.forEach(item => {
+                const row = document.createElement('tr');
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                
+                row.innerHTML = `
+                    <td>${item.name}</td>
+                    <td>KES ${item.price.toFixed(2)}</td>
+                    <td>
+                        <input type="number" min="1" max="${item.stock}" 
+                               value="${item.quantity}" data-id="${item.id}">
+                    </td>
+                    <td>KES ${itemTotal.toFixed(2)}</td>
+                    <td><button class="remove-item" data-id="${item.id}">Remove</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            document.getElementById('total-amount').textContent = total.toFixed(2);
+            document.getElementById('total-value').value = total;
+            document.getElementById('cart-data').value = JSON.stringify(cart);
+        }
+        
+        // Payment method toggle
+        document.querySelectorAll('input[name="payment_method"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                document.getElementById('mpesa-field').style.display = 
+                    this.value === 'mpesa' ? 'block' : 'none';
+            });
+        });
+    });
+</script>
+{% endblock %}

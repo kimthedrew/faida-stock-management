@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="profit-analysis">
+    <h2>Profit Analysis</h2>
+    
+    <div class="chart-container">
+        <canvas id="profitChart"></canvas>
+    </div>
+    
+    <div class="summary">
+        <h3>Daily Summary</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Total Sales</th>
+                    <th>Profit</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for date, data in profit_data.items() %}
+                <tr>
+                    <td>{{ date }}</td>
+                    <td>KES {{ data.sales|round(2) }}</td>
+                    <td>KES {{ data.profit|round(2) }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3">No sales data available</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div id="chart-data" data-chart="{{ chart_data | tojson | safe }}"></div>
+
+<script>
+// Read data from HTML attribute
+const chartData = JSON.parse(document.getElementById('chart-data').dataset.chart);
+console.log("Parsed chart data:", chartData);
+    
+    const ctx = document.getElementById('profitChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: chartData.dates,
+            datasets: [
+                {
+                    label: 'Profit',
+                    data: chartData.profits,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderWidth: 2,
+                    tension: 0.1
+                },
+                {
+                    label: 'Sales',
+                    data: chartData.sales,
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderWidth: 2,
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'KES ' + value;
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) label += ': ';
+                            label += 'KES ' + context.parsed.y;
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

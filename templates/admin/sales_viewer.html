@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="sales-viewer">
+    <h2>Sales Records</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Date</th>
+                <th>Total Amount</th>
+                <th>Payment Method</th>
+                <th>M-Pesa Code</th>
+                <th>Items</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sale in sales %}
+            <tr>
+                <td>{{ sale.id }}</td>
+                <td>{{ sale.date.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>KES {{ sale.total_amount }}</td>
+                <td>{{ sale.payment_method }}</td>
+                <td>{{ sale.mpesa_code or '-' }}</td>
+                <td>
+                    <ul>
+                        {% for item in sale.items %}
+                        <li>
+                            {{ item.stock_item.name }} - 
+                            {{ item.quantity }} × KES {{ item.price }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6">No sales records found</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

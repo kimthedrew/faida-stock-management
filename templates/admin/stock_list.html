@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="stock-list">
+    <h2>Stock List</h2>
+    <a href="{{ url_for('add_stock') }}" class="btn">Add New Item</a>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Buying Price</th>
+                <th>Selling Price</th>
+                <th>Size</th>
+                <th>Quantity</th>
+                <th>Description</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.id }}</td>
+                <td>{{ item.name }}</td>
+                <td>{{ item.buying_price }}</td>
+                <td>{{ item.selling_price }}</td>
+                <td>{{ item.size }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.description }}</td>
+                <td>
+                    <a href="{{ url_for('edit_stock', id=item.id) }}" class="btn">Edit</a>
+                    <a href="{{ url_for('delete_stock', id=item.id) }}" class="btn danger" 
+                       onclick="return confirm('Are you sure?')">Delete</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
