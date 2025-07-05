@@ -10,7 +10,6 @@ nixPkgs = [
 
 [phases.install]
 cacheDirectories = ["/opt/venv"]
-# Combine all commands in one install section
 cmds = [
   "python -m venv --copies /opt/venv",
   ". /opt/venv/bin/activate",
@@ -18,5 +17,6 @@ cmds = [
   "pip install -r requirements.txt"
 ]
 
+# MUST HAVE THIS START SECTION
 [phases.start]
 cmd = "gunicorn app:app -b 0.0.0.0:$PORT"

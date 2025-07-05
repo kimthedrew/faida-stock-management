@@ -14,3 +14,4 @@ WTForms==3.2.1
 flask-migrate
 flask
 psycopg2-binary
+gunicorn==21.2.0
