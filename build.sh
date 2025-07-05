@@ -1,7 +1,5 @@
 #!/bin/bash
-# build.sh
-set -o errexit
-
+python -m venv --copies /opt/venv
+source /opt/venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
-python -m flask db upgrade

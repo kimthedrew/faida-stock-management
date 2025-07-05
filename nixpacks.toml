@@ -1,0 +1,16 @@
+[phases.setup]
+nixPkgs = [
+  "postgresql",
+  "gcc",
+  "libffi",
+  "openssl",
+  "zlib",
+  "libpq",
+  "python310Full"
+]
+[phases.install]
+cacheDirectories = ["/opt/venv"]
+[phases.install]
+cmds = ["bash build.sh"]
+[phases.start]
+cmd = "gunicorn app:app -b 0.0.0.0:$PORT"
