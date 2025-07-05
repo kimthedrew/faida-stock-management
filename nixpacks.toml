@@ -19,4 +19,4 @@ cmds = [
 
 # MUST HAVE THIS START SECTION
 [phases.start]
-cmd = "gunicorn app:app -b 0.0.0.0:$PORT"
+cmd = "python app.py"
