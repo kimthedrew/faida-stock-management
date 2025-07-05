@@ -1,6 +1,5 @@
 [phases.setup]
 nixPkgs = [
-  "postgresql",
   "gcc",
   "libffi",
   "openssl",
@@ -8,9 +7,16 @@ nixPkgs = [
   "libpq",
   "python310Full"
 ]
+
 [phases.install]
 cacheDirectories = ["/opt/venv"]
-[phases.install]
-cmds = ["bash build.sh"]
+# Combine all commands in one install section
+cmds = [
+  "python -m venv --copies /opt/venv",
+  ". /opt/venv/bin/activate",
+  "pip install --upgrade pip",
+  "pip install -r requirements.txt"
+]
+
 [phases.start]
 cmd = "gunicorn app:app -b 0.0.0.0:$PORT"
