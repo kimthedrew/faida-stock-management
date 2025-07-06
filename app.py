@@ -321,9 +321,9 @@ def add_sample_data():
     
     return "Sample data added!"
 
-@app.route('/debug-static')
-def debug_static():
-    return send_from_directory('static', 'css/styles.css')
+@app.route('/health')
+def health_check():
+    return 'OK', 200
 
 def initialize_database():
     with app.app_context():
