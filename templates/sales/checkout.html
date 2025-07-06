@@ -7,7 +7,7 @@
     <div class="receipt">
         <div class="receipt-header">
             <h3>Receipt #{{ sale.id }}</h3>
-            <p>{{ sale.date | local_time }}</p>
+            <p>{{ sale.date.strftime('%Y-%m-%d %H:%M') }}</p>  <!-- Temporary fix until timezone is fixed -->
         </div>
         
         <div class="receipt-details">
@@ -45,19 +45,6 @@
                         <td>{{ item.quantity }}</td>
                         <td>KES {{ item.price }}</td>
                         <td>KES {{ item.price * item.quantity }}</td>
-                        <td>
-                            <button class="print-receipt" data-sale-id="{{ sale.id }}">Download</button>
-                            {% block scripts %}
-<script>
-    document.querySelectorAll('.print-receipt').forEach(button => {
-        button.addEventListener('click', function() {
-            const saleId = this.dataset.saleId;
-            window.open(`/receipt/${saleId}`, '_blank');
-        });
-    });
-</script>
-{% endblock %}
-                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -66,8 +53,20 @@
         
         <div class="receipt-footer">
             <p>Thank you for your business!</p>
+            <button class="print-receipt" data-sale-id="{{ sale.id }}">Download Receipt</button>
             <a href="{{ url_for('pos') }}" class="btn">New Sale</a>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.querySelectorAll('.print-receipt').forEach(button => {
+        button.addEventListener('click', function() {
+            const saleId = this.dataset.saleId;
+            window.open(`/receipt/${saleId}`, '_blank');
+        });
+    });
+</script>
 {% endblock %}

@@ -3,42 +3,64 @@
 <head>
     <title>Receipt #{{ sale.id }}</title>
     <style>
-        .receipt { width: 300px; margin: 0 auto; font-family: Arial; }
-        .header { text-align: center; }
-        .items { margin: 15px 0; }
-        .footer { margin-top: 20px; }
+        body { font-family: Arial, sans-serif; }
+        .receipt { width: 300px; margin: 0 auto; }
+        .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; }
+        .details { margin: 15px 0; }
+        .items { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        .items th, .items td { padding: 5px; text-align: left; }
+        .footer { border-top: 1px dashed #000; padding-top: 10px; }
         @media print {
-            button { display: none; }
+            .no-print { display: none; }
         }
     </style>
 </head>
 <body>
     <div class="receipt">
         <div class="header">
-            <h2>Your Store Name</h2>
-            <p>Receipt #{{ sale.id }}</p>
-            <p>{{ sale.date | local_time }}</p>
+            <h2>Your Business Name</h2>
+            <p>Address Line 1<br>City, Country</p>
+            <p>Tel: +254 700 000 000</p>
         </div>
         
-        <div class="items">
-            <h3>Items:</h3>
-            <ul>
-                {% for item in sale.items %}
-                <li>
-                    {{ item.stock_item.name }} - 
-                    {{ item.quantity }} × KES {{ item.price }}
-                </li>
-                {% endfor %}
-            </ul>
+        <div class="details">
+            <p><strong>Receipt #:</strong> {{ sale.id }}</p>
+            <p><strong>Date:</strong> {{ sale.date | local_time }}</p>
         </div>
+        
+        <table class="items">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in sale.items %}
+                <tr>
+                    <td>{{ item.stock_item.name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>KES {{ item.price }}</td>
+                    <td>KES {{ item.price * item.quantity }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
         
         <div class="footer">
-            <p><strong>Total: KES {{ sale.total_amount }}</strong></p>
-            <p>Payment: {{ sale.payment_method }}</p>
-            <p>M-Pesa: {{ sale.mpesa_code or 'N/A' }}</p>
+            <p><strong>Total:</strong> KES {{ sale.total_amount }}</p>
+            <p><strong>Payment Method:</strong> {{ sale.payment_method|upper }}</p>
+            {% if sale.payment_method == 'mpesa' and sale.mpesa_code %}
+            <p><strong>M-Pesa Code:</strong> {{ sale.mpesa_code }}</p>
+            {% endif %}
+            <p>Thank you for your business!</p>
         </div>
         
-        <button onclick="window.print()">Print Receipt</button>
+        <button class="no-print" onclick="window.print()" style="margin-top: 20px; padding: 10px; width: 100%;">
+            Print Receipt
+        </button>
     </div>
 </body>
 </html>

@@ -14,6 +14,7 @@ app.secret_key = 'your_secret_key'
 # app.jinja_env.filters['tojson'] = json.dumps
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config['TIMEZONE'] = 'Africa/Nairobi'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
@@ -93,8 +94,10 @@ def set_timezone():
 # Add a template filter
 @app.template_filter('local_time')
 def local_time_filter(dt):
+    if not dt:
+        return ""
     if dt.tzinfo is None:
-        dt = pytz.utc.localize(dt)  # Assume UTC if naive
+        dt = pytz.utc.localize(dt)
     return dt.astimezone(g.timezone).strftime('%Y-%m-%d %H:%M')
 
 @app.route('/logout')
