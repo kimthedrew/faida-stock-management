@@ -7,7 +7,7 @@
     <div class="receipt">
         <div class="receipt-header">
             <h3>Receipt #{{ sale.id }}</h3>
-            <p>{{ sale.date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+            <p>{{ sale.date | local_time }}</p>
         </div>
         
         <div class="receipt-details">
@@ -45,6 +45,19 @@
                         <td>{{ item.quantity }}</td>
                         <td>KES {{ item.price }}</td>
                         <td>KES {{ item.price * item.quantity }}</td>
+                        <td>
+                            <button class="print-receipt" data-sale-id="{{ sale.id }}">Download</button>
+                            {% block scripts %}
+<script>
+    document.querySelectorAll('.print-receipt').forEach(button => {
+        button.addEventListener('click', function() {
+            const saleId = this.dataset.saleId;
+            window.open(`/receipt/${saleId}`, '_blank');
+        });
+    });
+</script>
+{% endblock %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

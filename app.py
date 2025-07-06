@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from flask_migrate import Migrate
 import json
+import pytz
 
 
 
@@ -83,6 +84,18 @@ def login():
             return redirect(url_for('home'))
         flash('Invalid credentials')
     return render_template('login.html')
+
+@app.before_request
+def set_timezone():
+    # Set to Africa/Nairobi or your local timezone
+    g.timezone = pytz.timezone('Africa/Nairobi')
+
+# Add a template filter
+@app.template_filter('local_time')
+def local_time_filter(dt):
+    if dt.tzinfo is None:
+        dt = pytz.utc.localize(dt)  # Assume UTC if naive
+    return dt.astimezone(g.timezone).strftime('%Y-%m-%d %H:%M')
 
 @app.route('/logout')
 def logout():
@@ -245,6 +258,11 @@ def sales_viewer():
     
     sales = Sale.query.all()
     return render_template('admin/sales_viewer.html', sales=sales)
+
+@app.route('/receipt/<int:sale_id>')
+def receipt(sale_id):
+    sale = Sale.query.get_or_404(sale_id)
+    return render_template('receipt.html', sale=sale)
 
 @app.route('/checkout', methods=['POST'])
 def checkout():

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Receipt #{{ sale.id }}</title>
+    <style>
+        .receipt { width: 300px; margin: 0 auto; font-family: Arial; }
+        .header { text-align: center; }
+        .items { margin: 15px 0; }
+        .footer { margin-top: 20px; }
+        @media print {
+            button { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt">
+        <div class="header">
+            <h2>Your Store Name</h2>
+            <p>Receipt #{{ sale.id }}</p>
+            <p>{{ sale.date | local_time }}</p>
+        </div>
+        
+        <div class="items">
+            <h3>Items:</h3>
+            <ul>
+                {% for item in sale.items %}
+                <li>
+                    {{ item.stock_item.name }} - 
+                    {{ item.quantity }} × KES {{ item.price }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        <div class="footer">
+            <p><strong>Total: KES {{ sale.total_amount }}</strong></p>
+            <p>Payment: {{ sale.payment_method }}</p>
+            <p>M-Pesa: {{ sale.mpesa_code or 'N/A' }}</p>
+        </div>
+        
+        <button onclick="window.print()">Print Receipt</button>
+    </div>
+</body>
+</html>

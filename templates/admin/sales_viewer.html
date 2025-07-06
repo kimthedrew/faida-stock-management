@@ -18,7 +18,7 @@
             {% for sale in sales %}
             <tr>
                 <td>{{ sale.id }}</td>
-                <td>{{ sale.date.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ sale.date | local_time }}</td>
                 <td>KES {{ sale.total_amount }}</td>
                 <td>{{ sale.payment_method }}</td>
                 <td>{{ sale.mpesa_code or '-' }}</td>
