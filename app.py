@@ -346,6 +346,7 @@ def add_sample_data():
 def health_check():
     return 'OK', 200
 
+@app.route('/create_admin')
 def initialize_database():
     with app.app_context():
         # Create tables
