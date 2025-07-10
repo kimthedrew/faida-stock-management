@@ -85,6 +85,8 @@
     .search-bar-container {
             flex: 1;
             position: relative;
+            min-width: 0;
+            align-items: center;
     }
         
     .search-bar {
@@ -117,8 +119,9 @@
             color: white;
             border: none;
             border-radius: 50px;
-            padding: 0 30px;
-            font-size: 1.1rem;
+            padding: 10px 20px;
+            flex-shrink: 0;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
