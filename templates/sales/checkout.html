@@ -1,535 +1,102 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced Receipt System</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
-            min-height: 100vh;
-            padding: 20px;
-            color: #333;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .container {
-            max-width: 1200px;
-            width: 100%;
-            background-color: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-        }
-        
-        header {
-            background: linear-gradient(to right, #2c3e50, #4a6491);
-            color: white;
-            padding: 20px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .logo i {
-            font-size: 2.2rem;
-            color: #fdbb2d;
-        }
-        
-        .logo h1 {
-            font-size: 1.8rem;
-        }
-        
-        .nav {
-            display: flex;
-            gap: 20px;
-        }
-        
-        .nav a {
-            color: white;
-            text-decoration: none;
-            font-weight: 500;
-            padding: 8px 15px;
-            border-radius: 5px;
-            transition: background 0.3s;
-        }
-        
-        .nav a:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
-        
-        .content {
-            padding: 30px;
-        }
-        
-        .tabs {
-            display: flex;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #ddd;
-        }
-        
-        .tab {
-            padding: 12px 25px;
-            cursor: pointer;
-            font-weight: 500;
-            background: #f8f9fa;
-            border: 1px solid #ddd;
-            border-bottom: none;
-            border-radius: 5px 5px 0 0;
-            margin-right: 5px;
-        }
-        
-        .tab.active {
-            background: white;
-            border-color: #4a6491;
-            color: #4a6491;
-            position: relative;
-            top: 1px;
-        }
-        
-        .tab-content {
-            display: none;
-            padding: 25px;
-            border: 1px solid #ddd;
-            border-top: none;
-            border-radius: 0 0 5px 5px;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        .receipt-container {
-            max-width: 400px;
-            margin: 0 auto;
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .receipt-header {
-            text-align: center;
-            padding-bottom: 20px;
-            border-bottom: 2px dashed #ddd;
-            margin-bottom: 20px;
-        }
-        
-        .receipt-header h2 {
-            color: #2c3e50;
-            font-size: 1.8rem;
-            margin-bottom: 10px;
-        }
-        
-        .receipt-details {
-            margin-bottom: 25px;
-        }
-        
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .detail-label {
-            font-weight: 600;
-            color: #4a6491;
-        }
-        
-        .receipt-items {
-            margin-bottom: 25px;
-        }
-        
-        .items-header {
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr;
-            font-weight: 600;
-            padding: 10px 0;
-            border-bottom: 2px solid #4a6491;
-            color: #2c3e50;
-        }
-        
-        .item-row {
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr;
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .receipt-total {
-            text-align: right;
-            font-size: 1.3rem;
-            font-weight: 700;
-            padding: 15px 0;
-            margin-top: 20px;
-            border-top: 2px dashed #ddd;
-        }
-        
-        .receipt-total span {
-            color: #27ae60;
-        }
-        
-        .receipt-footer {
-            text-align: center;
-            padding-top: 20px;
-            border-top: 2px dashed #ddd;
-            color: #777;
-            font-style: italic;
-        }
-        
-        .action-buttons {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-            justify-content: center;
-        }
-        
-        .btn {
-            padding: 12px 25px;
-            border: none;
-            border-radius: 50px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s;
-        }
-        
-        .btn-print {
-            background: linear-gradient(to right, #3498db, #2980b9);
-            color: white;
-            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
-        }
-        
-        .btn-download {
-            background: linear-gradient(to right, #9b59b6, #8e44ad);
-            color: white;
-            box-shadow: 0 4px 10px rgba(142, 68, 173, 0.3);
-        }
-        
-        .btn-new-sale {
-            background: linear-gradient(to right, #2ecc71, #27ae60);
-            color: white;
-            box-shadow: 0 4px 10px rgba(46, 204, 113, 0.3);
-        }
-        
-        .btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
-        }
-        
-        @media print {
-            body {
-                background: white;
-                padding: 0;
-            }
-            
-            .container {
-                box-shadow: none;
-                border-radius: 0;
-            }
-            
-            header, .tabs, .action-buttons {
-                display: none;
-            }
-            
-            .tab-content {
-                display: block !important;
-                border: none;
-                padding: 0;
-            }
-            
-            .receipt-container {
-                max-width: 100%;
-                box-shadow: none;
-                padding: 0;
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .action-buttons {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .btn {
-                width: 100%;
-                max-width: 300px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <div class="logo">
-                <i class="fas fa-cash-register"></i>
-                <h1>RetailPro POS</h1>
-            </div>
-            <div class="nav">
-                <a href="#"><i class="fas fa-home"></i> Home</a>
-                <a href="#"><i class="fas fa-chart-line"></i> Reports</a>
-                <a href="#"><i class="fas fa-box"></i> Inventory</a>
-                <a href="#"><i class="fas fa-cog"></i> Settings</a>
-            </div>
-        </header>
-        
-        <div class="content">
-            <div class="tabs">
-                <div class="tab active" data-tab="receipt">Receipt</div>
-                <div class="tab" data-tab="checkout">Checkout</div>
-            </div>
-            
-            <!-- Receipt Tab Content -->
-            <div class="tab-content active" id="receipt-content">
-                <div class="receipt-container" id="receipt">
-                    <div class="receipt-header">
-                        <h2>RetailPro Store</h2>
-                        <p>123 Main Street, Nairobi, Kenya</p>
-                        <p>Tel: +254 700 123 456</p>
-                    </div>
-                    
-                    <div class="receipt-details">
-                        <div class="detail-row">
-                            <span class="detail-label">Receipt #:</span>
-                            <span>RCPT-2023-00142</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Date:</span>
-                            <span>July 9, 2023 14:25</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Cashier:</span>
-                            <span>John Doe</span>
-                        </div>
-                    </div>
-                    
-                    <div class="receipt-items">
-                        <div class="items-header">
-                            <span>Item</span>
-                            <span>Qty</span>
-                            <span>Price</span>
-                            <span>Total</span>
-                        </div>
-                        
-                        <div class="item-row">
-                            <span>Blue T-Shirt (M)</span>
-                            <span>2</span>
-                            <span>KES 1,299</span>
-                            <span>KES 2,598</span>
-                        </div>
-                        
-                        <div class="item-row">
-                            <span>Black Jeans (32)</span>
-                            <span>1</span>
-                            <span>KES 2,499</span>
-                            <span>KES 2,499</span>
-                        </div>
-                        
-                        <div class="item-row">
-                            <span>Running Shoes (42)</span>
-                            <span>1</span>
-                            <span>KES 4,599</span>
-                            <span>KES 4,599</span>
-                        </div>
-                        
-                        <div class="item-row">
-                            <span>Baseball Cap</span>
-                            <span>1</span>
-                            <span>KES 899</span>
-                            <span>KES 899</span>
-                        </div>
-                    </div>
-                    
-                    <div class="receipt-total">
-                        <strong>Total: <span>KES 10,595.00</span></strong>
-                    </div>
-                    
-                    <div class="receipt-details">
-                        <div class="detail-row">
-                            <span class="detail-label">Payment Method:</span>
-                            <span>M-PESA</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">M-PESA Code:</span>
-                            <span>RFB45G7H89</span>
-                        </div>
-                    </div>
-                    
-                    <div class="receipt-footer">
-                        <p>Thank you for shopping with us!</p>
-                        <p>Items can be exchanged within 14 days with original receipt</p>
-                    </div>
-                </div>
-                
-                <div class="action-buttons">
-                    <button class="btn btn-print" onclick="window.print()">
-                        <i class="fas fa-print"></i> Print Receipt
-                    </button>
-                    <button class="btn btn-download" id="download-pdf">
-                        <i class="fas fa-download"></i> Download Receipt
-                    </button>
-                    <button class="btn btn-new-sale">
-                        <i class="fas fa-cash-register"></i> New Sale
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Checkout Tab Content -->
-            <div class="tab-content" id="checkout-content">
-                <div class="receipt-container">
-                    <div class="receipt-header">
-                        <h2>Checkout Complete</h2>
-                        <p>Sale processed successfully</p>
-                    </div>
-                    
-                    <div class="receipt-details">
-                        <div class="detail-row">
-                            <span class="detail-label">Transaction ID:</span>
-                            <span>TXN-2023-00142</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Date:</span>
-                            <span>July 9, 2023 14:25</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Total Amount:</span>
-                            <span>KES 10,595.00</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Payment Method:</span>
-                            <span>M-PESA</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">M-PESA Code:</span>
-                            <span>RFB45G7H89</span>
-                        </div>
-                    </div>
-                    
-                    <div class="receipt-items">
-                        <h4 style="text-align: center; margin-bottom: 15px; color: #4a6491;">Items Purchased</h4>
-                        <div class="items-header">
-                            <span>Item</span>
-                            <span>Qty</span>
-                            <span>Price</span>
-                            <span>Total</span>
-                        </div>
-                        
-                        <div class="item-row">
-                            <span>Blue T-Shirt (M)</span>
-                            <span>2</span>
-                            <span>KES 1,299</span>
-                            <span>KES 2,598</span>
-                        </div>
-                        
-                        <div class="item-row">
-                            <span>Black Jeans (32)</span>
-                            <span>1</span>
-                            <span>KES 2,499</span>
-                            <span>KES 2,499</span>
-                        </div>
-                        
-                        <div class="item-row">
-                            <span>Running Shoes (42)</span>
-                            <span>1</span>
-                            <span>KES 4,599</span>
-                            <span>KES 4,599</span>
-                        </div>
-                        
-                        <div class="item-row">
-                            <span>Baseball Cap</span>
-                            <span>1</span>
-                            <span>KES 899</span>
-                            <span>KES 899</span>
-                        </div>
-                    </div>
-                    
-                    <div class="action-buttons" style="margin-top: 30px;">
-                        <button class="btn btn-download" id="download-checkout">
-                            <i class="fas fa-download"></i> Download Receipt
-                        </button>
-                        <button class="btn btn-new-sale">
-                            <i class="fas fa-cash-register"></i> New Sale
-                        </button>
-                    </div>
-                </div>
-            </div>
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <!-- Tabs / Nav would go here if you want them -->
+  
+  <!-- === RECEIPT TAB === -->
+  <div class="tab-content active" id="receipt-content">
+    <div class="receipt-container" id="receipt">
+      <div class="receipt-header">
+        <h2>RetailPro Store</h2>
+        <p>123 Main Street, Nairobi, Kenya</p>
+        <p>Tel: +254 700 123 456</p>
+      </div>
+      
+      <div class="receipt-details">
+        <div class="detail-row">
+          <span class="detail-label">Receipt #:</span>
+          <span>RCPT-{{ sale.id }}</span>
         </div>
+        <div class="detail-row">
+          <span class="detail-label">Date:</span>
+          <span>{{ sale.date.strftime('%Y-%m-%d %H:%M') }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Cashier:</span>
+          <span>{{ sale.cashier_name }}</span>
+        </div>
+      </div>
+      
+      <div class="receipt-items">
+        <div class="items-header">
+          <span>Item</span><span>Qty</span><span>Price</span><span>Total</span>
+        </div>
+        {% for item in sale.items %}
+        <div class="item-row">
+          <span>{{ item.stock_item.name }}{% if item.stock_item.size %} ({{ item.stock_item.size }}){% endif %}</span>
+          <span>{{ item.quantity }}</span>
+          <span>KES {{ '%.2f'|format(item.price) }}</span>
+          <span>KES {{ '%.2f'|format(item.price * item.quantity) }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      
+      <div class="receipt-total">
+        <strong>Total: <span>KES {{ '%.2f'|format(sale.total_amount) }}</span></strong>
+      </div>
+      
+      <div class="receipt-details">
+        <div class="detail-row">
+          <span class="detail-label">Payment Method:</span>
+          <span>{{ sale.payment_method|upper }}</span>
+        </div>
+        {% if sale.payment_method=='mpesa' and sale.mpesa_code %}
+        <div class="detail-row">
+          <span class="detail-label">M-PESA Code:</span>
+          <span>{{ sale.mpesa_code }}</span>
+        </div>
+        {% endif %}
+      </div>
+      
+      <div class="receipt-footer">
+        <p>Thank you for shopping with us!</p>
+        <p>Items can be exchanged within 14 days with original receipt</p>
+      </div>
     </div>
     
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Tab switching functionality
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', function() {
-                    // Remove active class from all tabs
-                    document.querySelectorAll('.tab').forEach(t => {
-                        t.classList.remove('active');
-                    });
-                    
-                    // Add active class to clicked tab
-                    this.classList.add('active');
-                    
-                    // Hide all tab content
-                    document.querySelectorAll('.tab-content').forEach(content => {
-                        content.classList.remove('active');
-                    });
-                    
-                    // Show corresponding tab content
-                    const tabId = this.getAttribute('data-tab');
-                    document.getElementById(`${tabId}-content`).classList.add('active');
-                });
-            });
-            
-            // PDF download functionality for receipt
-            document.getElementById('download-pdf').addEventListener('click', function() {
-                const element = document.getElementById('receipt');
-                const opt = {
-                    margin: 10,
-                    filename: `receipt-RCPT-2023-00142.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2 },
-                    jsPDF: { unit: 'mm', format: 'a5', orientation: 'portrait' }
-                };
-                
-                html2pdf().set(opt).from(element).save();
-            });
-            
-            // PDF download functionality for checkout
-            document.getElementById('download-checkout').addEventListener('click', function() {
-                const element = document.getElementById('checkout-content');
-                const opt = {
-                    margin: 10,
-                    filename: `checkout-receipt-TXN-2023-00142.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2 },
-                    jsPDF: { unit: 'mm', format: 'a5', orientation: 'portrait' }
-                };
-                
-                html2pdf().set(opt).from(element).save();
-            });
-        });
-    </script>
-</body>
-</html>
+    <div class="action-buttons">
+      <button class="btn btn-print" onclick="window.print()">
+        <i class="fas fa-print"></i> Print Receipt
+      </button>
+      <button class="btn btn-download" id="download-pdf">
+        <i class="fas fa-download"></i> Download Receipt
+      </button>
+      <a href="{{ url_for('pos') }}" class="btn btn-new-sale">
+        <i class="fas fa-cash-register"></i> New Sale
+      </a>
+    </div>
+  </div>
+  
+  <!-- === CHECKOUT TAB === -->
+  <div class="tab-content" id="checkout-content">
+    <!-- same pattern as above, just change titles/text -->
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <!-- html2pdf.js (already included in base or re‑include here) -->
+  <script>
+    document.getElementById('download-pdf').addEventListener('click', () => {
+      const element = document.getElementById('receipt');
+      const saleId = "{{ sale.id }}";
+      html2pdf().set({
+        margin: 10,
+        filename: 'receipt-RCPT-' + saleId + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a5', orientation: 'portrait' }
+      }).from(element).save();
+    });
+  </script>
+{% endblock %}
