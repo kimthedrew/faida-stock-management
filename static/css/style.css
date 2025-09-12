@@ -433,3 +433,14 @@ nav span {
     border: 1px solid #ddd;
     border-radius: 4px;
 }
+
+@media print {
+    @page {
+        size: 80mm 100mm; /* Standard thermal receipt size */
+        margin: 5mm;
+    }
+    .receipt-container {
+        width: 80mm;
+        font-size: 10pt;
+    }
+}

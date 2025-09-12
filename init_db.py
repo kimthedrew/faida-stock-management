@@ -5,17 +5,17 @@ def init_db():
     with app.app_context():
         db.create_all()
         # Create admin user
-        if not User.query.filter_by(username='admin').first():
-            admin = User(
-                username='admin',
-                password=generate_password_hash('admin123'),
-                role='admin'
+        if not User.query.filter_by(username='shem').first():
+            staff = User(
+                username='shem',
+                password=generate_password_hash('123456'),
+                role='staff'
             )
-            db.session.add(admin)
+            db.session.add(staff)
             db.session.commit()
-            print("Database initialized and admin user created.")
+            print("Database initialized and staff user created.")
         else:
-            print("Admin user already exists.")
+            print("staff user already exists.")
 
 if __name__ == '__main__':
     from app import app

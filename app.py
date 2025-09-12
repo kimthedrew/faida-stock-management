@@ -3,6 +3,8 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from flask_migrate import Migrate
+from datetime import datetime, timedelta
+import calendar
 import json
 import pytz
 
@@ -41,6 +43,7 @@ class Sale(db.Model):
     total_amount = db.Column(db.Float)
     payment_method = db.Column(db.String(20))
     mpesa_code = db.Column(db.String(50))
+    created_by = db.Column(db.String(80))
     items = db.relationship('SaleItem', back_populates='sale')  # Added back_populates
 
 class SaleItem(db.Model):
@@ -55,6 +58,11 @@ class SaleItem(db.Model):
 # Create tables
 with app.app_context():
     db.create_all()
+
+
+@app.template_filter('format_currency')
+def format_currency_filter(value):
+    return "{:,.2f}".format(value)
 
 # Routes
 # @app.route('/')
@@ -217,33 +225,272 @@ def delete_stock(id):
 #     return render_template('admin/profit_analysis.html', 
 #                            profit_data=profit_data,
 #                            chart_data=chart_data)
+# @app.route('/admin/profit-analysis')
+# def profit_analysis():
+#     # Calculate daily profits
+#     sales = Sale.query.all()
+#     profit_data = {}
+    
+#     for sale in sales:
+#         date_str = sale.date.strftime('%Y-%m-%d')
+#         if date_str not in profit_data:
+#             profit_data[date_str] = {'sales': 0, 'profit': 0}
+        
+#         for item in sale.items:
+#             if item.stock_item:  # Check if stock item exists
+#                 profit = (item.price - item.stock_item.buying_price) * item.quantity
+#                 profit_data[date_str]['profit'] += profit
+#             profit_data[date_str]['sales'] += item.price * item.quantity
+    
+#     # Prepare data for chart
+#     chart_data = {
+#         'dates': list(profit_data.keys()),
+#         'sales': [data['sales'] for data in profit_data.values()],
+#         'profits': [data['profit'] for data in profit_data.values()]
+#     }
+    
+#     return render_template('admin/profit_analysis.html', 
+#                            profit_data=profit_data,
+#                            chart_data=chart_data)
+
+# app.py (profit_analysis route)
+
 @app.route('/admin/profit-analysis')
 def profit_analysis():
-    # Calculate daily profits
-    sales = Sale.query.all()
-    profit_data = {}
-    
+    """
+    Robust profit analysis route:
+    - Accepts time_range values sent by the template: 'today', 'week', 'month', 'quarter', 'year'
+    - Converts date range to naive UTC datetimes for DB querying (assumes DB datetimes are naive UTC)
+    - Localizes sale datetimes correctly and groups by Nairobi date
+    - Zero-fills missing dates so chart arrays are same length and chronological
+    - Builds chart_data with 'dates', 'sales', 'profits', 'expenses'
+    """
+    # Get time range from query parameter (template uses values like 'today','week','month','quarter','year')
+    time_range = request.args.get('time_range', 'week')
+
+    nairobi_tz = pytz.timezone(app.config.get('TIMEZONE', 'Africa/Nairobi'))
+    today = datetime.now(nairobi_tz).date()
+
+    # Determine start_date based on requested range
+    if time_range in ('today', 'day'):
+        start_date = today
+    elif time_range == 'week':
+        start_date = today - timedelta(days=6)
+    elif time_range == 'month':
+        start_date = today.replace(day=1)
+    elif time_range == 'quarter':
+        # approximate quarter = last 90 days (you can adjust to exact quarter start if needed)
+        start_date = today - timedelta(days=90)
+    elif time_range == 'year':
+        start_date = today.replace(month=1, day=1)
+    else:
+        # fallback to last 30 days
+        start_date = today - timedelta(days=29)
+
+    end_date = today
+
+    # Build aware datetimes in Nairobi, then convert to UTC and then to naive UTC datetimes for DB comparison
+    start_dt_nairobi = nairobi_tz.localize(datetime.combine(start_date, datetime.min.time()))
+    end_dt_nairobi   = nairobi_tz.localize(datetime.combine(end_date,   datetime.max.time()))
+
+    # Convert to UTC (aware), then to naive by removing tzinfo (common pattern if DB stores naive UTC)
+    utc_start_aware = start_dt_nairobi.astimezone(pytz.UTC)
+    utc_end_aware   = end_dt_nairobi.astimezone(pytz.UTC)
+    utc_start_naive = utc_start_aware.replace(tzinfo=None)
+    utc_end_naive   = utc_end_aware.replace(tzinfo=None)
+
+    # Query sales between these naive UTC datetimes
+    sales = Sale.query.filter(Sale.date >= utc_start_naive).filter(Sale.date <= utc_end_naive).all()
+
+    # Prepare containers
+    profit_data = {}            # keyed by ISO date 'YYYY-MM-DD'
+    # We'll track cost (buying_price * qty) so expenses = cost
+    # and revenue (price * qty)
+    all_items_sold = []         # list of dicts per sold item for further aggregations
+
+    # Aggregate per sale
     for sale in sales:
-        date_str = sale.date.strftime('%Y-%m-%d')
-        if date_str not in profit_data:
-            profit_data[date_str] = {'sales': 0, 'profit': 0}
-        
+        # Ensure sale.date is treated as UTC-aware before converting to Nairobi
+        sale_dt = sale.date
+        if sale_dt is None:
+            continue
+
+        if sale_dt.tzinfo is None:
+            # DB-stored naive -> we assume it's UTC
+            sale_dt_aware = pytz.UTC.localize(sale_dt)
+        else:
+            sale_dt_aware = sale_dt
+
+        sale_date_nairobi = sale_dt_aware.astimezone(nairobi_tz).date()
+        date_key = sale_date_nairobi.strftime('%Y-%m-%d')
+
+        if date_key not in profit_data:
+            profit_data[date_key] = {'sales': 0.0, 'cost': 0.0, 'profit': 0.0}
+
+        # If you store Sale.total_amount, use it to add to sales. If not, derive from items.
+        if sale.total_amount is not None:
+            profit_data[date_key]['sales'] += float(sale.total_amount or 0.0)
+        # Now iterate items to compute cost and profit accurately
         for item in sale.items:
-            if item.stock_item:  # Check if stock item exists
-                profit = (item.price - item.stock_item.buying_price) * item.quantity
-                profit_data[date_str]['profit'] += profit
-            profit_data[date_str]['sales'] += item.price * item.quantity
-    
-    # Prepare data for chart
+            # item.price is unit selling price, item.quantity number sold
+            qty = float(item.quantity or 0)
+            unit_price = float(item.price or 0.0)
+            revenue = unit_price * qty
+
+            # Default buying price zero if stock_item missing
+            stock_item = None
+            if hasattr(item, 'stock_item') and item.stock_item:
+                stock_item = item.stock_item
+            else:
+                stock_item = db.session.get(StockItem, item.item_id)
+
+            buying_price = float(stock_item.buying_price) if stock_item and stock_item.buying_price is not None else 0.0
+            cost = buying_price * qty
+            profit = revenue - cost
+
+            # Add to per-day totals
+            profit_data[date_key]['sales'] += revenue if sale.total_amount is None else 0.0  # avoid double count if total_amount already used
+            profit_data[date_key]['cost'] += cost
+            profit_data[date_key]['profit'] += profit
+
+            # Save item for product-level analysis
+            all_items_sold.append({
+                'name': stock_item.name if stock_item else f"Item#{item.item_id}",
+                'quantity': int(qty),
+                'sale_date': sale_date_nairobi,
+                'revenue': revenue,
+                'cost': cost,
+                'profit': profit
+            })
+
+    # Build full date list from start_date .. end_date inclusive (chronological order)
+    dates_list = []
+    d = start_date
+    while d <= end_date:
+        dates_list.append(d.strftime('%Y-%m-%d'))
+        if d.strftime('%Y-%m-%d') not in profit_data:
+            profit_data[d.strftime('%Y-%m-%d')] = {'sales': 0.0, 'cost': 0.0, 'profit': 0.0}
+        d = d + timedelta(days=1)
+
+    # Now ensure chronological order
+    dates_list.sort()
+
+    # Build chart arrays (same length, chronological)
+    chart_sales = [ round(profit_data[dt]['sales'], 2)   for dt in dates_list ]
+    chart_profits = [ round(profit_data[dt]['profit'], 2) for dt in dates_list ]
+    chart_expenses = [ round(profit_data[dt]['cost'], 2)  for dt in dates_list ]
+
     chart_data = {
-        'dates': list(profit_data.keys()),
-        'sales': [data['sales'] for data in profit_data.values()],
-        'profits': [data['profit'] for data in profit_data.values()]
+        'dates': dates_list,
+        'sales': chart_sales,
+        'profits': chart_profits,
+        'expenses': chart_expenses
     }
-    
-    return render_template('admin/profit_analysis.html', 
+
+    # Totals & margins
+    total_revenue = sum(chart_sales)
+    total_profit = sum(chart_profits)
+    profit_margin = (total_profit / total_revenue * 100) if total_revenue else 0.0
+
+    # Build per-product stats
+    product_stats = {}
+    for it in all_items_sold:
+        name = it['name']
+        product = product_stats.setdefault(name, {'quantity_sold': 0, 'revenue': 0.0, 'profit': 0.0})
+        product['quantity_sold'] += it['quantity']
+        product['revenue']      += it['revenue']
+        product['profit']       += it['profit']
+
+    top_products_list = []
+    for name, stats in product_stats.items():
+        margin = (stats['profit'] / stats['revenue'] * 100) if stats['revenue'] else 0.0
+        top_products_list.append({
+            'name': name,
+            'quantity_sold': stats['quantity_sold'],
+            'revenue': stats['revenue'],
+            'profit': stats['profit'],
+            'margin': round(margin, 1)
+        })
+    top_products_list.sort(key=lambda x: x['profit'], reverse=True)
+    top_products_list = top_products_list[:10]
+
+     # Ensure top_product always has a numeric 'change' field so template can round() it
+    if top_products_list:
+        top_product = top_products_list[0]
+        # add default 'change' if missing (use 0.0 or compute a real change)
+        if 'change' not in top_product or top_product.get('change') is None:
+            top_product['change'] = 0.0
+    else:
+        top_product = {
+            'name': 'N/A',
+            'quantity_sold': 0,
+            'profit': 0.0,
+            'change': 0.0
+        }
+    # Build daily_item_counts and most_sold_per_day
+    daily_item_counts = {}
+    for it in all_items_sold:
+        date_str = it['sale_date'].strftime('%Y-%m-%d')
+        daily_item_counts.setdefault(date_str, {})
+        daily_item_counts[date_str][it['name']] = daily_item_counts[date_str].get(it['name'], 0) + it['quantity']
+
+    most_sold_per_day = {}
+    for date_key, counts in daily_item_counts.items():
+        if counts:
+            most_sold_per_day[date_key] = max(counts.items(), key=lambda x: x[1])[0]
+
+    # Weekly and monthly: top product by quantity
+    weekly_counts_by_product = {}
+    monthly_counts_by_product = {}
+    for it in all_items_sold:
+        week_key = f"{it['sale_date'].isocalendar()[0]}-W{it['sale_date'].isocalendar()[1]}"
+        month_key = it['sale_date'].strftime('%Y-%m')
+        weekly_counts_by_product.setdefault((week_key, it['name']), 0)
+        weekly_counts_by_product[(week_key, it['name'])] += it['quantity']
+        monthly_counts_by_product.setdefault((month_key, it['name']), 0)
+        monthly_counts_by_product[(month_key, it['name'])] += it['quantity']
+
+    # find top weekly product overall (across the range)
+    weekly_agg = {}
+    for (wk, name), qty in weekly_counts_by_product.items():
+        weekly_agg[name] = weekly_agg.get(name, 0) + qty
+    monthly_agg = {}
+    for (mk, name), qty in monthly_counts_by_product.items():
+        monthly_agg[name] = monthly_agg.get(name, 0) + qty
+
+    weekly_top_name, weekly_top_qty = ("N/A", 0)
+    if weekly_agg:
+        weekly_top_name, weekly_top_qty = max(weekly_agg.items(), key=lambda x: x[1])
+
+    monthly_top_name, monthly_top_qty = ("N/A", 0)
+    if monthly_agg:
+        monthly_top_name, monthly_top_qty = max(monthly_agg.items(), key=lambda x: x[1])
+
+    # Dummy change numbers (replace with actual comparators if you track previous periods)
+    revenue_change = 0.0
+    profit_change = 0.0
+    margin_change = 0.0
+
+    return render_template('admin/profit_analysis.html',
                            profit_data=profit_data,
-                           chart_data=chart_data)
+                           chart_data=chart_data,
+                           total_revenue=total_revenue,
+                           total_profit=total_profit,
+                           profit_margin=round(profit_margin, 1),
+                           revenue_change=revenue_change,
+                           profit_change=profit_change,
+                           margin_change=margin_change,
+                           top_products=top_products_list,
+                           top_product=top_product,
+                           most_sold_per_day=most_sold_per_day,
+                           daily_item_counts=daily_item_counts,
+                           weekly_most_sold_name=weekly_top_name,
+                           weekly_most_sold_qty=weekly_top_qty,
+                           monthly_most_sold_name=monthly_top_name,
+                           monthly_most_sold_qty=monthly_top_qty,
+                           time_range=time_range)
+
+
 
 # POS Routes
 @app.route('/pos')
@@ -280,7 +527,8 @@ def checkout():
         new_sale = Sale(
             total_amount=total,
             payment_method=payment_method,
-            mpesa_code=mpesa_code
+            mpesa_code=mpesa_code,
+            created_by=session.get('username')
         )
         db.session.add(new_sale)
         db.session.flush()  # Get sale ID before commit
@@ -313,6 +561,48 @@ def checkout():
         app.logger.error(f"Checkout error: {str(e)}")
         flash(f"Checkout failed: {str(e)}", 'error')
         return redirect(url_for('pos'))
+    
+@app.route('/sales')
+def sales():
+    # Visible to logged-in users (admin and staff)
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    nairobi_tz = pytz.timezone(app.config.get('TIMEZONE', 'Africa/Nairobi'))
+    # Fetch all sales ordered by date desc
+    sales_q = Sale.query.order_by(Sale.date.desc()).all()
+
+    # Group by date (Nairobi timezone)
+    grouped_sales = {}  # { '2025-09-12': [sale1, sale2], ... }
+    daily_totals = {}   # { '2025-09-12': 1500.0, ... }
+
+    for sale in sales_q:
+        try:
+            sale_dt = sale.date
+            if sale_dt.tzinfo is None:
+                # assume UTC in DB if naive
+                sale_dt = pytz.UTC.localize(sale_dt)
+            sale_local_date = sale_dt.astimezone(nairobi_tz).date()
+        except Exception:
+            # fallback: use naive date()
+            sale_local_date = sale.date.date()
+
+        date_key = sale_local_date.strftime('%Y-%m-%d')
+        if date_key not in grouped_sales:
+            grouped_sales[date_key] = []
+            daily_totals[date_key] = 0.0
+
+        grouped_sales[date_key].append(sale)
+        daily_totals[date_key] += sale.total_amount or 0.0
+
+    # Sort grouped_sales keys descending
+    sorted_dates = sorted(grouped_sales.keys(), reverse=True)
+
+    return render_template('sales/sales.html',
+                           grouped_sales=grouped_sales,
+                           daily_totals=daily_totals,
+                           sorted_dates=sorted_dates)
+
 
 @app.route('/add-sample-data')
 def add_sample_data():
