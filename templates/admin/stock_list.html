@@ -2,39 +2,475 @@
 
 {% block content %}
 <div class="stock-list">
-    <h2>Stock List</h2>
-    <a href="{{ url_for('add_stock') }}" class="btn">Add New Item</a>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Buying Price</th>
-                <th>Selling Price</th>
-                <th>Size</th>
-                <th>Quantity</th>
-                <th>Description</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in items %}
-            <tr>
-                <td>{{ item.id }}</td>
-                <td>{{ item.name }}</td>
-                <td>{{ item.buying_price }}</td>
-                <td>{{ item.selling_price }}</td>
-                <td>{{ item.size }}</td>
-                <td>{{ item.quantity }}</td>
-                <td>{{ item.description }}</td>
-                <td>
-                    <a href="{{ url_for('edit_stock', id=item.id) }}" class="btn">Edit</a>
-                    <a href="{{ url_for('delete_stock', id=item.id) }}" class="btn danger" 
-                       onclick="return confirm('Are you sure?')">Delete</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="stock-header">
+        <h2>Stock List</h2>
+        <a href="{{ url_for('add_stock') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add New Item
+        </a>
+    </div>
+    
+    <!-- Desktop Table View -->
+    <div class="table-container desktop-view">
+        <table class="stock-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Buying Price</th>
+                    <th>Selling Price</th>
+                    <th>Size</th>
+                    <th>Quantity</th>
+                    <th>Description</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.id }}</td>
+                    <td>{{ item.name }}</td>
+                    <td>KES {{ item.buying_price|round(2) }}</td>
+                    <td>KES {{ item.selling_price|round(2) }}</td>
+                    <td>{{ item.size or 'N/A' }}</td>
+                    <td>
+                        <span class="quantity-badge {% if item.quantity <= 5 %}low-stock{% elif item.quantity <= 10 %}medium-stock{% else %}good-stock{% endif %}">
+                            {{ item.quantity }}
+                        </span>
+                    </td>
+                    <td>{{ item.description or 'No description' }}</td>
+                    <td class="actions">
+                        <a href="{{ url_for('edit_stock', id=item.id) }}" class="btn btn-edit">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <a href="{{ url_for('delete_stock', id=item.id) }}" class="btn btn-danger" 
+                           onclick="return confirm('Are you sure you want to delete {{ item.name }}?')">
+                            <i class="fas fa-trash"></i> Delete
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="mobile-view">
+        {% for item in items %}
+        <div class="stock-card">
+            <div class="card-header">
+                <h3>{{ item.name }}</h3>
+                <span class="item-id">#{{ item.id }}</span>
+            </div>
+            
+            <div class="card-content">
+                <div class="price-info">
+                    <div class="price-row">
+                        <span class="label">Buying Price:</span>
+                        <span class="value">KES {{ item.buying_price|round(2) }}</span>
+                    </div>
+                    <div class="price-row">
+                        <span class="label">Selling Price:</span>
+                        <span class="value selling-price">KES {{ item.selling_price|round(2) }}</span>
+                    </div>
+                </div>
+                
+                <div class="item-details">
+                    <div class="detail-row">
+                        <span class="label">Size:</span>
+                        <span class="value">{{ item.size or 'N/A' }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Quantity:</span>
+                        <span class="quantity-badge {% if item.quantity <= 5 %}low-stock{% elif item.quantity <= 10 %}medium-stock{% else %}good-stock{% endif %}">
+                            {{ item.quantity }}
+                        </span>
+                    </div>
+                    {% if item.description %}
+                    <div class="detail-row">
+                        <span class="label">Description:</span>
+                        <span class="value description">{{ item.description }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card-actions">
+                <a href="{{ url_for('edit_stock', id=item.id) }}" class="btn btn-edit">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+                <a href="{{ url_for('delete_stock', id=item.id) }}" class="btn btn-danger" 
+                   onclick="return confirm('Are you sure you want to delete {{ item.name }}?')">
+                    <i class="fas fa-trash"></i> Delete
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
 </div>
+
+<style>
+/* Stock List Styles */
+.stock-list {
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.stock-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.stock-header h2 {
+    color: #2c3e50;
+    margin: 0;
+}
+
+.btn-primary {
+    background: #3498db;
+    color: white;
+    padding: 12px 20px;
+    text-decoration: none;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+/* Desktop Table Styles */
+.table-container {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.stock-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.stock-table th {
+    background: #2c3e50;
+    color: white;
+    padding: 15px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.stock-table td {
+    padding: 15px 12px;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+}
+
+.stock-table tr:hover {
+    background: #f8f9fa;
+}
+
+.stock-table tr:last-child td {
+    border-bottom: none;
+}
+
+.quantity-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 12px;
+    display: inline-block;
+}
+
+.quantity-badge.good-stock {
+    background: #d4edda;
+    color: #155724;
+}
+
+.quantity-badge.medium-stock {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.quantity-badge.low-stock {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-edit {
+    background: #17a2b8;
+    color: white;
+    padding: 6px 12px;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.3s ease;
+}
+
+.btn-edit:hover {
+    background: #138496;
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+    padding: 6px 12px;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.3s ease;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+    transform: translateY(-1px);
+}
+
+/* Mobile Card Styles */
+.mobile-view {
+    display: none;
+}
+
+.stock-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.stock-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.card-header {
+    background: #2c3e50;
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.item-id {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.card-content {
+    padding: 20px;
+}
+
+.price-info {
+    margin-bottom: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.price-row:last-child {
+    margin-bottom: 0;
+}
+
+.selling-price {
+    color: #27ae60;
+    font-weight: 600;
+}
+
+.item-details {
+    margin-bottom: 15px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.label {
+    font-weight: 500;
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.value {
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.description {
+    max-width: 200px;
+    text-align: right;
+    word-wrap: break-word;
+}
+
+.card-actions {
+    padding: 15px 20px;
+    background: #f8f9fa;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.card-actions .btn-edit,
+.card-actions .btn-danger {
+    flex: 1;
+    justify-content: center;
+    padding: 10px;
+    font-size: 14px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .desktop-view {
+        display: none;
+    }
+    
+    .mobile-view {
+        display: block;
+    }
+    
+    .stock-header {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+    
+    .stock-header h2 {
+        margin-bottom: 15px;
+    }
+    
+    .btn-primary {
+        justify-content: center;
+    }
+    
+    .card-content {
+        padding: 15px;
+    }
+    
+    .price-info {
+        padding: 12px;
+    }
+    
+    .card-actions {
+        padding: 12px 15px;
+        flex-direction: column;
+    }
+    
+    .card-actions .btn-edit,
+    .card-actions .btn-danger {
+        flex: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .stock-list {
+        padding: 15px;
+    }
+    
+    .card-header {
+        padding: 12px 15px;
+    }
+    
+    .card-header h3 {
+        font-size: 16px;
+    }
+    
+    .card-content {
+        padding: 12px;
+    }
+    
+    .price-info {
+        padding: 10px;
+    }
+    
+    .detail-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .value {
+        text-align: left;
+    }
+    
+    .description {
+        max-width: 100%;
+        text-align: left;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .stock-header .btn-primary,
+    .card-actions,
+    .actions {
+        display: none !important;
+    }
+    
+    .stock-card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+    
+    .desktop-view {
+        display: block !important;
+    }
+    
+    .mobile-view {
+        display: none !important;
+    }
+}
+</style>
 {% endblock %}
