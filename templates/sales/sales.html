@@ -6,7 +6,72 @@
         <h2>Sales</h2>
         <div>
             <button onclick="window.print()" style="padding:8px 12px;margin-right:8px;">Print</button>
-            <button id="exportCsvBtn" style="padding:8px 12px;">Export CSV</button>
+            <button id="exportCsvBtn" style="padding:8px 12px;margin-right:8px;">Export CSV</button>
+            <button id="refreshBtn" style="padding:8px 12px;">Refresh</button>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-section" style="background:#fff;border-radius:8px;padding:20px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+        <h3 style="margin:0 0 15px 0;color:#333;">Filter Sales</h3>
+        <form method="GET" id="filterForm" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;align-items:end;">
+            <div>
+                <label style="display:block;margin-bottom:5px;font-weight:500;color:#555;">Start Date</label>
+                <input type="date" name="start_date" value="{{ current_filters.start_date or '' }}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+            </div>
+            <div>
+                <label style="display:block;margin-bottom:5px;font-weight:500;color:#555;">End Date</label>
+                <input type="date" name="end_date" value="{{ current_filters.end_date or '' }}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+            </div>
+            <div>
+                <label style="display:block;margin-bottom:5px;font-weight:500;color:#555;">Payment Method</label>
+                <select name="payment_method" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    <option value="all">All Methods</option>
+                    {% for method in unique_payment_methods %}
+                    <option value="{{ method }}" {% if current_filters.payment_method == method %}selected{% endif %}>{{ method|upper }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="display:block;margin-bottom:5px;font-weight:500;color:#555;">Seller</label>
+                <select name="seller" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    <option value="all">All Sellers</option>
+                    {% for seller in unique_sellers %}
+                    <option value="{{ seller }}" {% if current_filters.seller == seller %}selected{% endif %}>{{ seller }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="display:block;margin-bottom:5px;font-weight:500;color:#555;">Min Amount (KES)</label>
+                <input type="number" name="min_amount" value="{{ current_filters.min_amount or '' }}" step="0.01" min="0" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+            </div>
+            <div>
+                <label style="display:block;margin-bottom:5px;font-weight:500;color:#555;">Max Amount (KES)</label>
+                <input type="number" name="max_amount" value="{{ current_filters.max_amount or '' }}" step="0.01" min="0" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button type="submit" style="padding:8px 16px;background:#3498db;color:white;border:none;border-radius:4px;cursor:pointer;">Apply Filters</button>
+                <button type="button" id="clearFilters" style="padding:8px 16px;background:#95a5a6;color:white;border:none;border-radius:4px;cursor:pointer;">Clear</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Summary Section -->
+    <div class="summary-section" style="background:#f8f9fa;border-radius:8px;padding:15px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;gap:30px;flex-wrap:wrap;">
+            <div>
+                <span style="color:#666;font-size:14px;">Total Sales:</span>
+                <strong style="color:#333;font-size:16px;">{{ total_sales_count }}</strong>
+            </div>
+            <div>
+                <span style="color:#666;font-size:14px;">Total Amount:</span>
+                <strong style="color:#2ecc71;font-size:16px;">KES {{ total_amount|round(2)|format_currency }}</strong>
+            </div>
+            {% if current_filters.start_date or current_filters.end_date or current_filters.payment_method != 'all' or current_filters.seller != 'all' or current_filters.min_amount or current_filters.max_amount %}
+            <div style="color:#e74c3c;font-size:14px;">
+                <i class="fas fa-filter"></i> Filters Applied
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -72,42 +137,125 @@
 </div>
 
 <script>
-document.getElementById('exportCsvBtn')?.addEventListener('click', function() {
-    // Build CSV in JS by scanning the DOM (simple client-side CSV export)
-    let rows = [];
-    rows.push(['Date', 'Sale ID', 'Time', 'Seller', 'Payment Method', 'Item', 'Qty', 'Unit Price', 'Line Total', 'Sale Total']);
-    const dayContainers = document.querySelectorAll('.sales-day');
-    dayContainers.forEach(day => {
-        const date = day.querySelector('h3').innerText.trim();
-        const saleRows = day.querySelectorAll('.sale-row');
-        saleRows.forEach(sr => {
-            const saleId = sr.querySelector('strong')?.innerText.replace('Sale #','').trim() || '';
-            const time = sr.querySelector('div[style*="Time"]') ? sr.querySelector('div[style*="Time"]').innerText : '';
-            const sellerText = sr.querySelector('div[style*="Sold by"]') ? sr.querySelector('div[style*="Sold by"]').innerText : '';
-            const seller = sellerText.replace('Sold by:','').trim();
-            const payment = (sr.querySelector('div[style*="Payment"]')?.innerText || '').replace('Payment:','').trim();
-            const saleTotal = sr.querySelector('div[style*="KES"]')?.innerText.replace('KES','').trim() || '';
-            // items
-            const trs = sr.querySelectorAll('tbody tr');
-            trs.forEach(tr => {
-                if (tr.children.length < 4) return;
-                const item = tr.children[0].innerText.trim();
-                const qty = tr.children[1].innerText.trim();
-                const unit = tr.children[2].innerText.replace('KES','').trim();
-                const line = tr.children[3].innerText.replace('KES','').trim();
-                rows.push([date, saleId, time, seller, payment, item, qty, unit, line, saleTotal]);
+document.addEventListener('DOMContentLoaded', function() {
+    // Export CSV functionality
+    document.getElementById('exportCsvBtn')?.addEventListener('click', function() {
+        // Build CSV in JS by scanning the DOM (simple client-side CSV export)
+        let rows = [];
+        rows.push(['Date', 'Sale ID', 'Time', 'Seller', 'Payment Method', 'Item', 'Qty', 'Unit Price', 'Line Total', 'Sale Total']);
+        const dayContainers = document.querySelectorAll('.sales-day');
+        dayContainers.forEach(day => {
+            const date = day.querySelector('h3').innerText.trim();
+            const saleRows = day.querySelectorAll('.sale-row');
+            saleRows.forEach(sr => {
+                const saleId = sr.querySelector('strong')?.innerText.replace('Sale #','').trim() || '';
+                const time = sr.querySelector('div[style*="Time"]') ? sr.querySelector('div[style*="Time"]').innerText : '';
+                const sellerText = sr.querySelector('div[style*="Sold by"]') ? sr.querySelector('div[style*="Sold by"]').innerText : '';
+                const seller = sellerText.replace('Sold by:','').trim();
+                const payment = (sr.querySelector('div[style*="Payment"]')?.innerText || '').replace('Payment:','').trim();
+                const saleTotal = sr.querySelector('div[style*="KES"]')?.innerText.replace('KES','').trim() || '';
+                // items
+                const trs = sr.querySelectorAll('tbody tr');
+                trs.forEach(tr => {
+                    if (tr.children.length < 4) return;
+                    const item = tr.children[0].innerText.trim();
+                    const qty = tr.children[1].innerText.trim();
+                    const unit = tr.children[2].innerText.replace('KES','').trim();
+                    const line = tr.children[3].innerText.replace('KES','').trim();
+                    rows.push([date, saleId, time, seller, payment, item, qty, unit, line, saleTotal]);
+                });
             });
         });
+
+        let csvContent = "data:text/csv;charset=utf-8," + rows.map(r => r.map(cell => '"' + ('' + (cell || '')).replace(/"/g,'""') + '"').join(',')).join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "sales_export.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     });
 
-    let csvContent = "data:text/csv;charset=utf-8," + rows.map(r => r.map(cell => '"' + ('' + (cell || '')).replace(/"/g,'""') + '"').join(',')).join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "sales_export.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Refresh functionality
+    document.getElementById('refreshBtn')?.addEventListener('click', function() {
+        const originalText = this.innerHTML;
+        this.innerHTML = 'Refreshing...';
+        this.disabled = true;
+        
+        setTimeout(() => {
+            window.location.reload();
+        }, 500);
+    });
+
+    // Clear filters functionality
+    document.getElementById('clearFilters')?.addEventListener('click', function() {
+        // Clear all form inputs
+        const form = document.getElementById('filterForm');
+        if (form) {
+            form.reset();
+            // Set dropdowns to 'all'
+            const selects = form.querySelectorAll('select');
+            selects.forEach(select => {
+                select.value = 'all';
+            });
+            // Submit the form to reload with no filters
+            form.submit();
+        }
+    });
+
+    // Auto-submit form on date change for better UX
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            // Small delay to allow both dates to be set if user is changing both
+            setTimeout(() => {
+                document.getElementById('filterForm').submit();
+            }, 100);
+        });
+    });
 });
 </script>
+
+<style>
+@media print {
+    .filter-section, .summary-section, button {
+        display: none !important;
+    }
+    
+    .sales-container {
+        max-width: none !important;
+        margin: 0 !important;
+    }
+    
+    .sales-day {
+        break-inside: avoid;
+        margin-bottom: 20px !important;
+    }
+    
+    .sale-row {
+        break-inside: avoid;
+        margin-bottom: 15px !important;
+    }
+    
+    table {
+        font-size: 12px !important;
+    }
+    
+    th, td {
+        padding: 6px 8px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .filter-section form {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .summary-section {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+}
+</style>
 {% endblock %}

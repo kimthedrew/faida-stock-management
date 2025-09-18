@@ -6,7 +6,10 @@
     <div class="dashboard-links">
         <a href="{{ url_for('stock_list') }}" class="btn">Manage Stock</a>
         <a href="{{ url_for('profit_analysis') }}" class="btn">Profit Analysis</a>
-        <a href="{{ url_for('pos') }}" class="btn">Go to POS</a>  <!-- Add this line -->
+        <a href="{{ url_for('pos') }}" class="btn">Go to POS</a>
+        <a href="{{ url_for('reset_business_data') }}" class="btn btn-danger" style="background: #e74c3c; color: white;">
+            <i class="fas fa-trash-alt"></i> Reset Business Data
+        </a>
     </div>
 </div>
 {% endblock %}

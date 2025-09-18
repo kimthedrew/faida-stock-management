@@ -13,7 +13,7 @@ import pytz
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
-# app.jinja_env.filters['tojson'] = json.dumps
+app.jinja_env.filters['tojson'] = json.dumps
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['TIMEZONE'] = 'Africa/Nairobi'
@@ -471,6 +471,36 @@ def profit_analysis():
     profit_change = 0.0
     margin_change = 0.0
 
+    # Get today's items for the template
+    today_items = []
+    today_date_str = today.strftime('%Y-%m-%d')
+    if today_date_str in profit_data:
+        # Get today's items from all_items_sold
+        today_items = [item for item in all_items_sold if item['sale_date'].strftime('%Y-%m-%d') == today_date_str]
+        
+        # Group by product name and aggregate
+        today_items_grouped = {}
+        for item in today_items:
+            name = item['name']
+            if name not in today_items_grouped:
+                today_items_grouped[name] = {
+                    'name': name,
+                    'quantity': 0,
+                    'revenue': 0.0,
+                    'profit': 0.0,
+                    'unit_price': 0.0
+                }
+            today_items_grouped[name]['quantity'] += item['quantity']
+            today_items_grouped[name]['revenue'] += item['revenue']
+            today_items_grouped[name]['profit'] += item['profit']
+        
+        # Calculate unit price (average)
+        for item in today_items_grouped.values():
+            if item['quantity'] > 0:
+                item['unit_price'] = item['revenue'] / item['quantity']
+        
+        today_items = list(today_items_grouped.values())
+
     return render_template('admin/profit_analysis.html',
                            profit_data=profit_data,
                            chart_data=chart_data,
@@ -488,7 +518,9 @@ def profit_analysis():
                            weekly_most_sold_qty=weekly_top_qty,
                            monthly_most_sold_name=monthly_top_name,
                            monthly_most_sold_qty=monthly_top_qty,
-                           time_range=time_range)
+                           time_range=time_range,
+                           todays_items=today_items,
+                           today_date=today.strftime('%B %d, %Y'))
 
 
 
@@ -512,7 +544,7 @@ def sales_viewer():
 @app.route('/receipt/<int:sale_id>')
 def receipt(sale_id):
     sale = Sale.query.get_or_404(sale_id)
-    return render_template('receipt.html', sale=sale)
+    return render_template('sales/receipt.html', sale=sale)
 
 @app.route('/checkout', methods=['POST'])
 def checkout():
@@ -569,8 +601,58 @@ def sales():
         return redirect(url_for('login'))
 
     nairobi_tz = pytz.timezone(app.config.get('TIMEZONE', 'Africa/Nairobi'))
-    # Fetch all sales ordered by date desc
-    sales_q = Sale.query.order_by(Sale.date.desc()).all()
+    
+    # Get filter parameters
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    payment_method = request.args.get('payment_method')
+    seller = request.args.get('seller')
+    min_amount = request.args.get('min_amount')
+    max_amount = request.args.get('max_amount')
+    
+    # Build query with filters
+    sales_q = Sale.query
+    
+    # Date filters
+    if start_date:
+        try:
+            start_dt = nairobi_tz.localize(datetime.strptime(start_date, '%Y-%m-%d'))
+            start_dt_utc = start_dt.astimezone(pytz.UTC).replace(tzinfo=None)
+            sales_q = sales_q.filter(Sale.date >= start_dt_utc)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_dt = nairobi_tz.localize(datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1))
+            end_dt_utc = end_dt.astimezone(pytz.UTC).replace(tzinfo=None)
+            sales_q = sales_q.filter(Sale.date < end_dt_utc)
+        except ValueError:
+            pass
+    
+    # Payment method filter
+    if payment_method and payment_method != 'all':
+        sales_q = sales_q.filter(Sale.payment_method == payment_method)
+    
+    # Seller filter
+    if seller and seller != 'all':
+        sales_q = sales_q.filter(Sale.created_by == seller)
+    
+    # Amount filters
+    if min_amount:
+        try:
+            sales_q = sales_q.filter(Sale.total_amount >= float(min_amount))
+        except ValueError:
+            pass
+    
+    if max_amount:
+        try:
+            sales_q = sales_q.filter(Sale.total_amount <= float(max_amount))
+        except ValueError:
+            pass
+    
+    # Execute query and order by date desc
+    sales_q = sales_q.order_by(Sale.date.desc()).all()
 
     # Group by date (Nairobi timezone)
     grouped_sales = {}  # { '2025-09-12': [sale1, sale2], ... }
@@ -597,11 +679,32 @@ def sales():
 
     # Sort grouped_sales keys descending
     sorted_dates = sorted(grouped_sales.keys(), reverse=True)
+    
+    # Get unique sellers and payment methods for filter dropdowns
+    all_sales = Sale.query.all()
+    unique_sellers = list(set([sale.created_by for sale in all_sales if sale.created_by]))
+    unique_payment_methods = list(set([sale.payment_method for sale in all_sales if sale.payment_method]))
+    
+    # Calculate totals for filtered results
+    total_sales_count = len(sales_q)
+    total_amount = sum(sale.total_amount or 0.0 for sale in sales_q)
 
     return render_template('sales/sales.html',
                            grouped_sales=grouped_sales,
                            daily_totals=daily_totals,
-                           sorted_dates=sorted_dates)
+                           sorted_dates=sorted_dates,
+                           unique_sellers=unique_sellers,
+                           unique_payment_methods=unique_payment_methods,
+                           total_sales_count=total_sales_count,
+                           total_amount=total_amount,
+                           current_filters={
+                               'start_date': start_date,
+                               'end_date': end_date,
+                               'payment_method': payment_method,
+                               'seller': seller,
+                               'min_amount': min_amount,
+                               'max_amount': max_amount
+                           })
 
 
 @app.route('/add-sample-data')
@@ -654,6 +757,82 @@ def initialize_database():
             print("Database initialized and admin user created.")
         else:
             print("Admin user already exists.")
+
+@app.route('/admin/reset-data', methods=['GET', 'POST'])
+def reset_business_data():
+    """Reset all sales data to start fresh business operations"""
+    if 'user_id' not in session or session['role'] != 'admin':
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        try:
+            # Get confirmation and backup option
+            confirm_reset = request.form.get('confirm_reset')
+            create_backup = request.form.get('create_backup', False)
+            
+            if confirm_reset == 'yes':
+                # Create backup if requested
+                if create_backup:
+                    # Export current data to CSV before deletion
+                    sales = Sale.query.all()
+                    backup_data = []
+                    for sale in sales:
+                        for item in sale.items:
+                            backup_data.append({
+                                'sale_id': sale.id,
+                                'date': sale.date.strftime('%Y-%m-%d %H:%M:%S'),
+                                'total_amount': sale.total_amount,
+                                'payment_method': sale.payment_method,
+                                'mpesa_code': sale.mpesa_code,
+                                'created_by': sale.created_by,
+                                'item_name': item.stock_item.name if item.stock_item else f"Item#{item.item_id}",
+                                'quantity': item.quantity,
+                                'price': item.price
+                            })
+                    
+                    # Save backup to file
+                    import csv
+                    from datetime import datetime
+                    backup_filename = f"sales_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                    with open(backup_filename, 'w', newline='', encoding='utf-8') as csvfile:
+                        if backup_data:
+                            fieldnames = backup_data[0].keys()
+                            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                            writer.writeheader()
+                            writer.writerows(backup_data)
+                    
+                    flash(f'Backup created: {backup_filename}', 'info')
+                
+                # Delete all sales and sale items
+                SaleItem.query.delete()
+                Sale.query.delete()
+                
+                # Reset stock quantities to original values (optional)
+                reset_stock = request.form.get('reset_stock', False)
+                if reset_stock:
+                    # You might want to add original_quantity field to StockItem model
+                    # For now, we'll just keep current quantities
+                    pass
+                
+                db.session.commit()
+                flash('All sales data has been reset successfully! You can now start fresh.', 'success')
+                return redirect(url_for('admin_dashboard'))
+            else:
+                flash('Data reset cancelled.', 'info')
+                return redirect(url_for('admin_dashboard'))
+                
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error resetting data: {str(e)}', 'error')
+            return redirect(url_for('admin_dashboard'))
+    
+    # GET request - show confirmation page
+    sales_count = Sale.query.count()
+    total_sales_amount = db.session.query(db.func.sum(Sale.total_amount)).scalar() or 0
+    
+    return render_template('admin/reset_data.html', 
+                         sales_count=sales_count, 
+                         total_sales_amount=total_sales_amount)
 
 if __name__ == '__main__':
     initialize_database()

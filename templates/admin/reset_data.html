@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="reset-data-container" style="max-width: 800px; margin: 40px auto; padding: 20px;">
+    <div class="warning-card" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+        <h2 style="color: #856404; margin-bottom: 15px;">
+            <i class="fas fa-exclamation-triangle"></i> Reset Business Data
+        </h2>
+        <p style="color: #856404; margin-bottom: 0;">
+            <strong>Warning:</strong> This action will permanently delete all sales data. This cannot be undone!
+        </p>
+    </div>
+
+    <div class="data-summary" style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+        <h3 style="margin-bottom: 15px; color: #333;">Current Data Summary</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div style="text-align: center; padding: 15px; background: white; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="font-size: 24px; font-weight: bold; color: #e74c3c;">{{ sales_count }}</div>
+                <div style="color: #666; font-size: 14px;">Total Sales</div>
+            </div>
+            <div style="text-align: center; padding: 15px; background: white; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="font-size: 24px; font-weight: bold; color: #e74c3c;">KES {{ total_sales_amount|round(2)|format_currency }}</div>
+                <div style="color: #666; font-size: 14px;">Total Revenue</div>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" style="background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h3 style="margin-bottom: 20px; color: #333;">Reset Options</h3>
+        
+        <div style="margin-bottom: 20px;">
+            <label style="display: flex; align-items: center; cursor: pointer; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background: #f8f9fa;">
+                <input type="checkbox" name="create_backup" value="true" style="margin-right: 10px; transform: scale(1.2);">
+                <div>
+                    <strong>Create backup before reset</strong>
+                    <div style="font-size: 14px; color: #666; margin-top: 5px;">
+                        Export all current sales data to a CSV file before deletion
+                    </div>
+                </div>
+            </label>
+        </div>
+
+        <div style="margin-bottom: 30px;">
+            <label style="display: flex; align-items: center; cursor: pointer; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background: #f8f9fa;">
+                <input type="checkbox" name="reset_stock" value="true" style="margin-right: 10px; transform: scale(1.2);">
+                <div>
+                    <strong>Reset stock quantities (Optional)</strong>
+                    <div style="font-size: 14px; color: #666; margin-top: 5px;">
+                        Keep current stock quantities as they are
+                    </div>
+                </div>
+            </label>
+        </div>
+
+        <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 15px; margin-bottom: 20px;">
+            <h4 style="color: #856404; margin-bottom: 10px;">What will be deleted:</h4>
+            <ul style="color: #856404; margin: 0; padding-left: 20px;">
+                <li>All sales records</li>
+                <li>All sale items</li>
+                <li>All profit analysis data</li>
+                <li>All sales reports</li>
+            </ul>
+        </div>
+
+        <div style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; padding: 15px; margin-bottom: 20px;">
+            <h4 style="color: #155724; margin-bottom: 10px;">What will be preserved:</h4>
+            <ul style="color: #155724; margin: 0; padding-left: 20px;">
+                <li>User accounts and login information</li>
+                <li>Stock items and inventory</li>
+                <li>System settings and configuration</li>
+            </ul>
+        </div>
+
+        <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px;">
+            <button type="submit" name="confirm_reset" value="yes" 
+                    style="padding: 12px 30px; background: #e74c3c; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold;"
+                    onclick="return confirm('Are you absolutely sure you want to delete all sales data? This action cannot be undone!')">
+                <i class="fas fa-trash-alt"></i> Reset All Data
+            </button>
+            
+            <a href="{{ url_for('admin_dashboard') }}" 
+               style="padding: 12px 30px; background: #6c757d; color: white; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold; display: inline-block;">
+                <i class="fas fa-arrow-left"></i> Cancel
+            </a>
+        </div>
+    </form>
+
+    <div style="margin-top: 30px; padding: 20px; background: #e9ecef; border-radius: 8px; text-align: center;">
+        <h4 style="color: #495057; margin-bottom: 10px;">Need Help?</h4>
+        <p style="color: #6c757d; margin: 0;">
+            If you're unsure about this action, consider creating a backup first. 
+            You can always restore data from the backup file if needed.
+        </p>
+    </div>
+</div>
+
+<style>
+@media (max-width: 768px) {
+    .reset-data-container {
+        margin: 20px;
+        padding: 15px;
+    }
+    
+    .data-summary div {
+        grid-template-columns: 1fr !important;
+    }
+    
+    form div:last-child {
+        flex-direction: column !important;
+    }
+    
+    form div:last-child button,
+    form div:last-child a {
+        width: 100%;
+        text-align: center;
+    }
+}
+</style>
+{% endblock %}
