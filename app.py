@@ -153,8 +153,21 @@ def admin_dashboard():
 
 @app.route('/admin/stock')
 def stock_list():
-    items = StockItem.query.all()
-    return render_template('admin/stock_list.html', items=items)
+    search_query = request.args.get('search', '').strip()
+    
+    if search_query:
+        # Search across name, size, and description fields
+        items = StockItem.query.filter(
+            db.or_(
+                StockItem.name.contains(search_query),
+                StockItem.size.contains(search_query),
+                StockItem.description.contains(search_query)
+            )
+        ).all()
+    else:
+        items = StockItem.query.all()
+    
+    return render_template('admin/stock_list.html', items=items, search_query=search_query)
 
 @app.route('/admin/stock/add', methods=['GET', 'POST'])
 def add_stock():

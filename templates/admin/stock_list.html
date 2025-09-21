@@ -4,10 +4,42 @@
 <div class="stock-list">
     <div class="stock-header">
         <h2>Stock List</h2>
-        <a href="{{ url_for('add_stock') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Add New Item
-        </a>
+        <div class="header-actions">
+            <div class="search-container">
+                <form method="GET" action="{{ url_for('stock_list') }}" class="search-form">
+                    <div class="search-input-group">
+                        <input type="text" 
+                               name="search" 
+                               value="{{ search_query or '' }}" 
+                               placeholder="Search items by name, size, or description..." 
+                               class="search-input">
+                        <button type="submit" class="search-btn">
+                            <i class="fas fa-search"></i>
+                        </button>
+                        {% if search_query %}
+                        <a href="{{ url_for('stock_list') }}" class="clear-search-btn" title="Clear search">
+                            <i class="fas fa-times"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+            <a href="{{ url_for('add_stock') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add New Item
+            </a>
+        </div>
     </div>
+    
+    <!-- Search Results Info -->
+    {% if search_query %}
+    <div class="search-results-info">
+        <p>
+            <i class="fas fa-search"></i>
+            Search results for "<strong>{{ search_query }}</strong>" - 
+            <span class="results-count">{{ items|length }} item{{ 's' if items|length != 1 else '' }} found</span>
+        </p>
+    </div>
+    {% endif %}
     
     <!-- Desktop Table View -->
     <div class="table-container desktop-view">
@@ -128,6 +160,109 @@
 .stock-header h2 {
     color: #2c3e50;
     margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+/* Search Styles */
+.search-container {
+    position: relative;
+}
+
+.search-form {
+    margin: 0;
+}
+
+.search-input-group {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.search-input-group:focus-within {
+    border-color: #3498db;
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+}
+
+.search-input {
+    border: none;
+    outline: none;
+    padding: 12px 16px;
+    font-size: 14px;
+    width: 300px;
+    background: transparent;
+}
+
+.search-input::placeholder {
+    color: #6c757d;
+}
+
+.search-btn {
+    background: #3498db;
+    border: none;
+    padding: 12px 16px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-btn:hover {
+    background: #2980b9;
+}
+
+.clear-search-btn {
+    background: #dc3545;
+    color: white;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.clear-search-btn:hover {
+    background: #c82333;
+    color: white;
+}
+
+/* Search Results Info */
+.search-results-info {
+    background: #e8f4fd;
+    border: 1px solid #b8daff;
+    border-radius: 8px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    color: #004085;
+}
+
+.search-results-info p {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.search-results-info i {
+    color: #3498db;
+}
+
+.results-count {
+    font-weight: 600;
+    color: #2c3e50;
 }
 
 .btn-primary {
@@ -390,6 +525,16 @@
         margin-bottom: 15px;
     }
     
+    .header-actions {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
+    
+    .search-input {
+        width: 100%;
+    }
+    
     .btn-primary {
         justify-content: center;
     }
@@ -471,6 +616,92 @@
     .mobile-view {
         display: none !important;
     }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.querySelector('.search-input');
+    const searchForm = document.querySelector('.search-form');
+    
+    // Real-time search with debouncing
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            // Auto-submit form after 500ms of no typing
+            if (searchInput.value.trim().length >= 2 || searchInput.value.trim().length === 0) {
+                searchForm.submit();
+            }
+        }, 500);
+    });
+    
+    // Highlight search terms in results
+    const searchQuery = '{{ search_query or "" }}';
+    if (searchQuery) {
+        highlightSearchTerms(searchQuery);
+    }
+    
+    function highlightSearchTerms(query) {
+        const tables = document.querySelectorAll('.stock-table tbody tr, .stock-card');
+        const terms = query.toLowerCase().split(' ').filter(term => term.length > 0);
+        
+        tables.forEach(row => {
+            const textContent = row.textContent.toLowerCase();
+            let hasMatch = false;
+            
+            terms.forEach(term => {
+                if (textContent.includes(term)) {
+                    hasMatch = true;
+                    highlightTextInElement(row, term);
+                }
+            });
+            
+            // Show/hide rows based on search match
+            if (query && !hasMatch) {
+                row.style.display = 'none';
+            } else {
+                row.style.display = '';
+            }
+        });
+    }
+    
+    function highlightTextInElement(element, term) {
+        const walker = document.createTreeWalker(
+            element,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+        
+        const textNodes = [];
+        let node;
+        
+        while (node = walker.nextNode()) {
+            textNodes.push(node);
+        }
+        
+        textNodes.forEach(textNode => {
+            const text = textNode.textContent;
+            const regex = new RegExp(`(${term})`, 'gi');
+            if (regex.test(text)) {
+                const highlightedText = text.replace(regex, '<mark class="search-highlight">$1</mark>');
+                const wrapper = document.createElement('span');
+                wrapper.innerHTML = highlightedText;
+                textNode.parentNode.replaceChild(wrapper, textNode);
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.search-highlight {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-weight: 600;
 }
 </style>
 {% endblock %}
